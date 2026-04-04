@@ -319,9 +319,14 @@ class Plex:
 
                 printDebug.info( "PleXBMC -> Settings hostname and port: %s : %s" % ( settings.get_setting('ipaddress'), settings.get_setting('port')))
 
-                local_server=PlexMediaServer(address=settings.get_setting('ipaddress'), port=settings.get_setting('port'), discovery='local')
+                manual_token = self.myplex_token
+                if manual_token is None:
+                    stored = settings.get_setting('myplex_token')
+                    if stored and '|' in stored:
+                        manual_token = stored.split('|', 1)[1]
+                local_server=PlexMediaServer(address=settings.get_setting('ipaddress'), port=settings.get_setting('port'), discovery='local',token=manual_token)
                 local_server.set_user(self.effective_user)
-                local_server.set_token(self.effective_token)
+                local_server.set_token(manual_token)
 
                 self.merge_servers(local_server)
 
@@ -401,10 +406,10 @@ class Plex:
                 response = requests.post("%s%s" % (self.myplex_server, path), data='', headers=self.plex_identification(), verify=True, timeout=(3,10))
         except requests.exceptions.ConnectionError, e:
             printDebug.error("myplex: %s is offline or uncontactable. error: %s" % (self.myplex_server, e))
-            return '<?xml version="1.0" encoding="UTF-8"?><message status="error"></message>'                
+            return '<?xml version="1.0" encoding="UTF-8"?><message status="offline"></message>'
         except requests.exceptions.ReadTimeout, e:
             printDebug.info("myplex: read timeout for %s on %s " % (self.myplex_server, path))
-            return '<?xml version="1.0" encoding="UTF-8"?><message status="error"></message>'                
+            return '<?xml version="1.0" encoding="UTF-8"?><message status="offline"></message>'
 
         else:
 
@@ -564,7 +569,7 @@ class Plex:
                   'thumb'      : users.get('thumb') }
             self.user_list[users.get('title')]=add
 
-        return self.user_list        
+        return self.user_list
 
     def switch_plex_home_user(self,id,pin):
         if pin is None:
@@ -627,3 +632,4 @@ class Plex:
         printDebug("Gathered information: %s" % result)
 
         return result
+
