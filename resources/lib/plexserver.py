@@ -441,7 +441,23 @@ class PlexMediaServer:
 
         fullURL="%s%s" % (transcode_request, urllib.urlencode(transcode_settings))
         printDebug.debug("Transcoded media location URL: %s" % fullURL)
-        return (session, self.get_formatted_url(fullURL, options={'X-Plex-Device' : 'Plex Home Theater'}))
+        master_url = self.get_formatted_url(fullURL, options={'X-Plex-Device' : 'Plex Home Theater'})
+        try:
+            import urllib2
+            resp = urllib2.urlopen(master_url, timeout=10)
+            master_data = resp.read()
+            for line in master_data.splitlines():
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    base = master_url.split('start.m3u8')[0]
+                    token = settings.get_setting('myplex_token')
+                    if '|' in token:
+                        token = token.split('|')[1]
+                    inner_url = '%s%s?X-Plex-Token=%s' % (base, line, token)
+                    return (session, inner_url)
+        except Exception, e:
+            printDebug.error('inner m3u8 resolve failed: %s' % e)
+        return (session, master_url)
 
     def get_legacy_transcode( self, id, url, identifier=None ):
 

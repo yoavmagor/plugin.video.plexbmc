@@ -161,7 +161,12 @@ class Plex:
 
                 printDebug.info( "PleXBMC -> Settings hostname and port: %s : %s" % ( settings.get_setting('ipaddress'), settings.get_setting('port')))
 
-                local_server=PlexMediaServer(address=settings.get_setting('ipaddress'), port=settings.get_setting('port'), discovery='local',token=self.myplex_token)
+                manual_token = self.myplex_token
+                if manual_token is None:
+                    stored = settings.get_setting('myplex_token')
+                    if stored and '|' in stored:
+                        manual_token = stored.split('|', 1)[1]
+                local_server=PlexMediaServer(address=settings.get_setting('ipaddress'), port=settings.get_setting('port'), discovery='local',token=manual_token)
                 self.merge_servers(local_server)
 
                 
@@ -247,8 +252,10 @@ class Plex:
             response = requests.get("%s%s" % (self.myplex_server, path), params=dict(self.plex_identification(), **self.get_myplex_token(renew)), verify=True, timeout=(3,10))
         except requests.exceptions.ConnectionError, e:
             printDebug.error("myplex: %s is offline or uncontactable. error: %s" % (self.myplex_server, e))
+            return '<?xml version="1.0" encoding="UTF-8"?><message status="offline"></message>'
         except requests.exceptions.ReadTimeout, e:
             printDebug.info("myplex: read timeout for %s on %s " % (self.myplex_server, path))
+            return '<?xml version="1.0" encoding="UTF-8"?><message status="offline"></message>'
         else:
             
             if response.status_code == 401  and not ( renew ):
